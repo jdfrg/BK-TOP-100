@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="initial-scale=1.0">
+<title>Picker</title>
+<style>
+body {
+    background:#FFF;
+    color:#000;
+    font-family:verdana, sans-serif;
+    font-size:10pt;
+    margin:0;
+    padding:10px;
+}
+
+a:link, a:visited {
+    color:#008;
+    font-weight:bold;
+    text-decoration:none;
+}
+
+a:active, a:hover {
+    color:#ACF;
+}
+
+.info {
+    font-weight:bold;
+}
+
+button {
+    font-family:inherit;
+    cursor:pointer;
+    border:0;
+    border-radius:3px;
+    padding:0.3em 0.5em;
+    background:#CCC;
+    color:#000;
+}
+
+button:hover {
+    background:#DDD;
+}
+
+button.disabled {
+    background:#DDD;
+    color:#888;
+    cursor:not-allowed;
+}
+
+button.disabled:hover {
+    background:#DDD;
+}
+
+#container {
+    position:relative;
+    margin-left:-10px;
+    margin-right:-10px;
+    padding:10px;
+    overflow:hidden;
+}
+
+@media (min-width:1024px) {
+    /* Put the found favorites beside the picking div when the window is sufficiently large */
+    #picking {
+        float:left;
+        width:636px;
+    }
+
+    #secondary {
+        margin-left:646px;
+    }
+}
+
+@media (min-width:1300px) {
+    /* Once we get to the point where 636px is less than half of the width of the screen, make the picking div just take up half */
+    #picking {
+        width:50%;
+    }
+
+    #secondary {
+        margin-left:51%;
+    }
+}
+
+#pick {
+    background:#58F;
+    color:#FFF;
+    font-size:larger;
+    font-weight:bold;
+    width:6em;
+    border-radius:5px;
+    margin-right:10px;
+}
+
+#pick.disabled {
+    background:#ACF;
+}
+
+#pick:hover {
+    background:#ACF;
+}
+
+.item-list {
+    padding:0;
+    list-style-type:none;
+    line-height:100px;
+}
+
+.item-list li {
+    margin:0;
+    display:inline-block;
+    height:100px;
+    width:100px;
+    line-height:100px;
+    border:3px solid transparent;
+    text-align:center;
+    position:relative;
+    vertical-align:top;
+    overflow:hidden;
+    border-radius:100%;
+    background:#F7F7F7;
+    color:#000;
+}
+
+.item-list li img {
+    vertical-align:middle;
+    max-height:100%;
+    max-width:100%;
+}
+
+.item-list li span {
+    display:inline-block;
+    vertical-align:middle;
+    line-height:1.2;
+}
+
+@media (max-width:636px) {
+    .item-list {
+        line-height:75px;
+    }
+
+    .item-list li {
+        line-height:75px;
+        height:75px;
+        width:75px;
+    }
+}
+
+@media (max-width:423px) {
+    .item-list {
+        line-height:50px;
+    }
+
+    .item-list li {
+        line-height:50px;
+        height:50px;
+        width:50px;
+    }
+}
+
+#evaluating li {
+    cursor:pointer;
+}
+
+#favorites li {
+    cursor:move;
+}
+
+.item-list li:hover {
+    background:#CDF;
+}
+
+.item-list.sorting li:hover {
+    background:#F7F7F7;
+}
+
+#evaluating li.selected {
+    border:3px solid #7AC;
+}
+
+#evaluating, #buttons {
+    text-align:center;
+    margin:auto;
+}
+
+#evaluating li.notice {
+    width:auto;
+    height:auto;
+    max-width:260px;
+    margin:auto;
+    background:#F7F7F7;
+    border-radius:10px;
+    padding:30px 30px;
+    color:#000;
+    text-align:center;
+    line-height:1.4;
+    cursor:auto;
+    font-size:10pt;
+}
+
+#buttons {
+    margin-top:30px;
+    position:relative;
+    z-index:3;
+}
+</style>
+</head>
+<body>
+<h1>Picker</h1>
+
+<p>You can include any content you want here.</p>
+
+<div id="container">
+
+<div id="picking">
+<ul id="evaluating" class="item-list">
+</ul>
+
+<p id="buttons"><button id="pick">Pick</button> <button id="pass">Pass</button> <button id="undo">Undo</button> <button id="redo">Redo</button></p>
+</div>
+
+<div id="secondary">
+<h2>Found favorites</h2>
+
+<ol id="favorites" class="item-list">
+</ol>
+</div>
+</div>
+<script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+<script src="picker.js"></script>
+<script src="picker-ui.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.7.0/Sortable.min.js"></script>
+<script>
+'use strict';
+
+var items = [
+{id: 'Tangle', image: 'https://static.wikia.nocookie.net/sonic/images/6/6d/SFSBTangle.png/revision/latest?cb=20221130015044'},
+{id: 'Shadow', image: 'https://static.wikia.nocookie.net/sonic/images/b/b5/TSR_Shadow.png/revision/latest?cb=20220124053702'},
+{id: 'Whisper', image: 'https://static.wikia.nocookie.net/sonic/images/f/f2/SFSBWhisper.png/revision/latest?cb=20221130014536'},
+{id: 'Sonic', image: 'https://static.wikia.nocookie.net/sonic/images/c/cd/SDT_SonicRender.png/revision/latest?cb=20231207040916'},
+{id: 'Knuckles', image: 'https://static.wikia.nocookie.net/sonic/images/3/30/SDT_KnucklesRender.png/revision/latest?cb=20231207040916'},
+{id: 'Tails', image: 'https://static.wikia.nocookie.net/sonic/images/c/c5/SDTTailsRender.png/revision/latest?cb=20240110231754'},
+{id: 'Surge', image: 'https://static.wikia.nocookie.net/sonic/images/a/ac/SFSB_Surge_Render.png/revision/latest?cb=20231110021323'},
+{id: 'Amy', image: 'https://static.wikia.nocookie.net/sonic/images/3/30/SDTAmyRender.png/revision/latest?cb=20240111001913'},
+{id: 'Blaze', image: 'https://static.wikia.nocookie.net/sonic/images/2/29/TSR_Blaze.png/revision/latest?cb=20230411140219'},
+{id: 'Eggman', image: 'https://static.wikia.nocookie.net/sonic/images/1/1f/SDT_DoctorEggmanRender.png/revision/latest?cb=20231207040916'},
+{id: 'Silver', image: 'https://static.wikia.nocookie.net/sonic/images/b/b2/TSR_Silver.png/revision/latest?cb=20201002034915'},
+{id: 'Starline', image: 'https://static.wikia.nocookie.net/sonic/images/6/64/Doctor_Starline_profile.png/revision/latest/scale-to-width-down/1000?cb=20210409192928'},
+{id: 'Rouge', image: 'https://static.wikia.nocookie.net/sonic/images/1/16/SDTRougeRender.png/revision/latest?cb=20240110205712'},
+{id: 'Omega', image: 'https://static.wikia.nocookie.net/sonic/images/5/53/TSR_Omega.png/revision/latest/scale-to-width-down/1000?cb=20201121123137'},
+{id: 'Bean', image: 'https://static.wikia.nocookie.net/sonic/images/b/b0/Chara_bean.png/revision/latest/scale-to-width-down/1000?cb=20230902090201'},
+{id: 'Kit', image: 'https://static.wikia.nocookie.net/sonic/images/6/64/Kitsunami50.jpg/revision/latest?cb=20220706103736'},
+{id: 'Vector', image: 'https://static.wikia.nocookie.net/sonic/images/7/7d/Vector_Team_Sonic_Racing.png/revision/latest?cb=20201121123532'},
+{id: 'Infinite', image: 'https://static.wikia.nocookie.net/sonic/images/c/c7/SFSB_Infinite_Render.png/revision/latest?cb=20231110021710'},
+{id: 'Metal Sonic', image: 'https://static.wikia.nocookie.net/sonic/images/c/c4/TSR_Metal.png/revision/latest?cb=20201121123118'},
+{id: 'Nicole', image: 'https://static.wikia.nocookie.net/sonic/images/b/b5/Nicole_Spark_of_Life.png/revision/latest/scale-to-width-down/1000?cb=20150206222343'},
+{id: 'Cream', image: 'https://static.wikia.nocookie.net/sonic/images/f/f0/SDT_Cream_%28Render%29.png/revision/latest?cb=20231216235440'},
+{id: 'Fang', image: 'https://static.wikia.nocookie.net/sonic/images/c/c3/Fang.png/revision/latest?cb=20230921222730'},
+{id: 'Sally', image: 'https://static.wikia.nocookie.net/sonic/images/1/1f/Official_neo_sally_acorn_by_elesis_knight-d8qoion.png/revision/latest?cb=20230416161600'},
+{id: 'Bunnie', image: 'https://static.wikia.nocookie.net/sonic/images/6/65/Bunnie_Post_WWC_V2.png/revision/latest?cb=20140213232601'},
+{id: 'Espio', image: 'https://static.wikia.nocookie.net/sonic/images/a/ac/Espio-Sonic-Forces-Speed-Battle-Artwork.png/revision/latest?cb=20201002023440'},
+{id: 'Sticks', image: 'https://static.wikia.nocookie.net/sonic/images/0/0a/Sticks_the_Badger_2015.png/revision/latest/scale-to-width-down/1000?cb=20231105065428'},
+{id: 'Bark', image: 'https://static.wikia.nocookie.net/sonic/images/b/bf/Bark_1.png/revision/latest/scale-to-width-down/1000?cb=20230902090153'},
+{id: 'Tikal', image: 'https://static.wikia.nocookie.net/sonic/images/a/aa/TikalSFSB.png/revision/latest?cb=20230411131343'},
+{id: 'Sage', image: 'https://static.wikia.nocookie.net/sonic/images/f/f8/Sage.png/revision/latest?cb=20230810211408'},
+{id: 'Big', image: 'https://static.wikia.nocookie.net/sonic/images/4/44/Frontiers_Big.png/revision/latest?cb=20221123210714'},
+{id: 'Mighty', image: 'https://static.wikia.nocookie.net/sonic/images/6/6e/SonicMania_MightyNoShadow.png/revision/latest/scale-to-width-down/1000?cb=20200224004250'},
+{id: 'Antoine', image: 'https://static.wikia.nocookie.net/sonic/images/c/c2/Antoine_Post_WWC_V2.png/revision/latest?cb=20140213234822'},
+{id: 'Trip', image: 'https://static.wikia.nocookie.net/sonic/images/a/a1/Trip_%28Superstars_2023%29.png/revision/latest/scale-to-width-down/1000?cb=20231023063400'},
+{id: 'Wave', image: 'https://static.wikia.nocookie.net/sonic/images/2/22/Wave_Speed_Battle.png/revision/latest?cb=20201002023715'},
+{id: 'Barry', image: 'https://static.wikia.nocookie.net/sonic/images/f/f2/Barry.png/revision/latest?cb=20230401230026'},
+{id: 'Breezie', image: 'https://static.wikia.nocookie.net/sonic/images/0/0f/Breezie_the_Hedgehog_profile.jpg/revision/latest?cb=20230228202857'},
+{id: 'Honey', image: 'https://static.wikia.nocookie.net/sonic/images/0/02/Honey_the_Cat.png/revision/latest?cb=20220228042435'},
+{id: 'Clove', image: 'https://static.wikia.nocookie.net/sonic/images/2/28/Clove_Profile_v2.jpg/revision/latest?cb=20140814173656'},
+{id: 'Marine', image: 'https://static.wikia.nocookie.net/sonic/images/0/0a/RushAdventure_Marine_pose.png/revision/latest/scale-to-width-down/1000?cb=20230801000228'},
+{id: 'Lanolin', image: 'https://static.wikia.nocookie.net/sonic/images/1/1d/Lanolin57.PNG/revision/latest?cb=20230824231554'},
+{id: 'Scourge', image: 'https://static.wikia.nocookie.net/sonic/images/5/51/Scourge_the_Hedgehog_Official_Artwork.png/revision/latest/scale-to-width-down/1000?cb=20211023003152'},
+{id: 'Jewel', image: 'https://static.wikia.nocookie.net/sonic/images/0/0d/SonicIDW_Jewel.png/revision/latest?cb=20230215224704'},
+{id: 'Lien-Da', image: 'https://static.wikia.nocookie.net/sonic/images/7/77/Lien-Da_profile.png/revision/latest?cb=20220422174900'},
+{id: 'Manic', image: 'https://static.wikia.nocookie.net/sonic/images/7/7f/Manic_2.png/revision/latest?cb=20211012065852'},
+{id: 'Julie-Su', image: 'https://static.wikia.nocookie.net/sonic/images/9/92/Julie-Su_profile.png/revision/latest/scale-to-width-down/1000?cb=20201202215720'},
+{id: 'Jet', image: 'https://static.wikia.nocookie.net/sonic/images/0/07/Jet_Speed_Battle.png/revision/latest?cb=20201002023625'},
+{id: 'Mephiles', image: 'https://static.wikia.nocookie.net/sonic/images/c/c3/Mephiles_SFSB_Render.png/revision/latest?cb=20231003203307'},
+{id: 'Rough & Tumble', image: 'https://static.wikia.nocookie.net/sonic/images/1/1e/Rough_%26_Tumble.jpg/revision/latest/scale-to-width-down/1000?cb=20190512132338'},
+{id: 'Charmy', image: 'https://static.wikia.nocookie.net/sonic/images/b/b6/Charmy-Sonic-Forces-Speed-Battle-Artwork.png/revision/latest?cb=20201002023132'},
+{id: 'Mimic', image: 'https://static.wikia.nocookie.net/sonic/images/2/22/Mimic_profile.png/revision/latest?cb=20210405165359'},
+{id: 'Mecha Sonic Mk. 2', image: 'https://static.wikia.nocookie.net/sonic/images/7/77/Mecha_Sonic_Mark_II_original_IDW.png/revision/latest?cb=20231019100007'},
+{id: 'Zavok', image: 'https://static.wikia.nocookie.net/sonic/images/d/de/TSR_Zavok.png/revision/latest/scale-to-width-down/1000?cb=20201121123513'},
+{id: 'Motobug', image: 'https://static.wikia.nocookie.net/sonic/images/1/13/SSSMotobug.png/revision/latest?cb=20230422011458'},
+{id: 'Fiona', image: 'https://static.wikia.nocookie.net/sonic/images/5/5d/Fiona_Fox_profil.jpg/revision/latest?cb=20230515070157'},
+{id: 'Eclipse', image: 'https://static.wikia.nocookie.net/sonic/images/0/0c/Eclipse_the_Darkling_%283D_Model%29.png/revision/latest?cb=20141111223256'},
+{id: 'Elias Acorn', image: 'https://static.wikia.nocookie.net/sonic/images/6/6b/Elias_Acorn.JPG/revision/latest?cb=20220606033910'},
+{id: 'Mecha Sonic', image: 'https://static.wikia.nocookie.net/sonic/images/0/0f/Superstars_Mecha_Sonic.png/revision/latest?cb=20231019202651'},
+{id: 'Vanilla', image: 'https://static.wikia.nocookie.net/sonic/images/c/c1/Mother%27s_day_vanilla.png/revision/latest/scale-to-width-down/1000?cb=20230726223855'},
+{id: 'Razor', image: 'https://static.wikia.nocookie.net/sonic/images/8/83/Razor_the_Shark.jpg/revision/latest?cb=20230131173840'},
+{id: 'Kragok', image: 'https://static.wikia.nocookie.net/sonic/images/7/7c/Kragok03.png/revision/latest?cb=20180410222830'},
+{id: 'Shard', image: 'https://static.wikia.nocookie.net/sonic/images/4/40/Shard.webp/revision/latest?cb=20231203025807'},
+{id: 'Robotnik', image: 'https://static.wikia.nocookie.net/sonic/images/b/bc/Robotnik_Profile.jpg/revision/latest?cb=20140122104857'},
+{id: 'Knucklesjak', image: 'https://static.wikia.nocookie.net/sonic/images/7/70/Knuckles_Enerjak_Icon.jpg/revision/latest?cb=20160306205007'},
+{id: 'Ariem', image: 'https://static.wikia.nocookie.net/sonic/images/e/e4/Ariem.png/revision/latest/scale-to-width-down/1000?cb=20231102022111'},
+{id: 'Tekno', image: 'https://static.wikia.nocookie.net/sonic/images/6/61/STC103-Tekno.jpg/revision/latest?cb=20100712204044'},
+{id: 'Agent Stone', image: 'https://static.wikia.nocookie.net/sonic/images/0/0a/StoneNavbox.jpg/revision/latest?cb=20220414175419'},
+{id: 'Cosmo', image: 'https://static.wikia.nocookie.net/sonic/images/9/9c/Cosmo.png/revision/latest?cb=20231019045706'},
+{id: 'Chaos', image: 'https://static.wikia.nocookie.net/sonic/images/3/33/SF_STEAM_MANUAL_EN_LRv5-12.png/revision/latest/scale-to-width-down/1000?cb=20171108090624'},
+{id: 'Ray', image: 'https://static.wikia.nocookie.net/sonic/images/a/a2/SonicMania_RayNoShadow.png/revision/latest/scale-to-width-down/1000?cb=20200224004842'},
+{id: 'Belle', image: 'https://static.wikia.nocookie.net/sonic/images/e/e9/Sonic_IDW_Belle.png/revision/latest/scale-to-width-down/1000?cb=20210409193032'},
+{id: 'Dark Enerjak', image: 'https://static.wikia.nocookie.net/sonic/images/a/a8/Dark_Enerjak_profile.png/revision/latest?cb=20211210054658'},
+{id: 'Nite', image: 'https://static.wikia.nocookie.net/sonic/images/5/52/NiteTheOwl.png/revision/latest?cb=20211118191350'},
+{id: 'Cassia', image: 'https://static.wikia.nocookie.net/sonic/images/e/e8/Cassia_Profile.jpg/revision/latest?cb=20140814173545'},
+{id: 'Captain Whisker', image: 'https://static.wikia.nocookie.net/sonic/images/c/cc/Whisker_0216_ok.png/revision/latest/scale-to-width-down/1000?cb=20080124195135'},
+{id: 'Clutch', image: 'https://static.wikia.nocookie.net/sonic/images/b/b7/Clutch_the_Opossum_profile.png/revision/latest/scale-to-width-down/1000?cb=20210325012800'},
+{id: 'Sonia', image: 'https://static.wikia.nocookie.net/sonic/images/4/44/Sonia_1.png/revision/latest?cb=20171206123406'},
+{id: 'Jani-Ca', image: 'https://static.wikia.nocookie.net/sonic/images/8/8b/Jani-Ca_Fight.jpg/revision/latest?cb=20230220122830'},
+{id: 'Gamma', image: 'https://static.wikia.nocookie.net/sonic/images/2/29/SFSB_Gamma.png/revision/latest?cb=20220706130849'},
+{id: 'Bomb', image: 'https://static.wikia.nocookie.net/sonic/images/4/40/Bomb-sprite.png/revision/latest?cb=20151018131010'},
+{id: 'Merlina', image: 'https://static.wikia.nocookie.net/sonic/images/8/89/Merlina.png/revision/latest?cb=20221028231441'},
+{id: 'Dimitri', image: 'https://static.wikia.nocookie.net/sonic/images/8/8e/Dimitri_Sonic_Archie_profile.jpg/revision/latest/scale-to-width-down/1000?cb=20220611013227'},
+{id: 'Zazz', image: 'https://static.wikia.nocookie.net/sonic/images/d/d1/Zazz_Speed_Battle.png/revision/latest?cb=20201003213915'},
+{id: 'Neo Metal', image: 'https://static.wikia.nocookie.net/sonic/images/1/1b/SSS_Neo_Metal_Sonic_Render.png/revision/latest?cb=20240313220224'},
+{id: 'Dave the Intern', image: 'https://static.wikia.nocookie.net/sonic/images/7/7c/Dave_profile_v2.png/revision/latest?cb=20150721144258'},
+{id: 'Snively', image: 'https://static.wikia.nocookie.net/sonic/images/3/35/Snively_PSGW.png/revision/latest?cb=20180428070659'},
+{id: 'Silver Sonic', image: 'https://static.wikia.nocookie.net/sonic/images/0/02/Silver_Sonic.png/revision/latest?cb=20221110225231'},
+{id: 'Metal 3.0', image: 'https://static.wikia.nocookie.net/sonic/images/f/fd/SSSMetal30Render.png/revision/latest?cb=20230720011433'},
+{id: 'Gemerl', image: 'https://static.wikia.nocookie.net/sonic/images/2/29/G-Merl.png/revision/latest?cb=20230902090138'},
+{id: 'Percival', image: 'https://static.wikia.nocookie.net/sonic/images/5/50/SFSBSirPercival.png/revision/latest?cb=20210705132802'},
+{id: 'Ebony', image: 'https://static.wikia.nocookie.net/sonic/images/d/d5/STC184-Ebony.jpg/revision/latest?cb=20100327185326'},
+{id: 'Dr. Don\'t', image: 'https://static.wikia.nocookie.net/sonic/images/7/7b/DrDontPose.png/revision/latest?cb=20230906032949'},
+{id: 'Tiara B', image: 'https://static.wikia.nocookie.net/sonic/images/c/ca/Tiara_Boobowski.png/revision/latest?cb=20170511113553'},
+{id: 'Johnny Lightfoot', image: 'https://static.wikia.nocookie.net/sonic/images/1/17/STC21-Johnny.jpg/revision/latest?cb=20090502063924'},
+{id: 'Void', image: 'https://static.wikia.nocookie.net/sonic/images/9/9b/Void-sonic-shuffle.png/revision/latest?cb=20140405111111'},
+{id: 'Shahra', image: 'https://static.wikia.nocookie.net/sonic/images/7/75/Shahra.png/revision/latest?cb=20150622115758'},
+{id: 'Lumina', image: 'https://static.wikia.nocookie.net/sonic/images/1/1e/Lumina-sonic-shuffle.png/revision/latest/scale-to-width-down/1000?cb=20120302225230'},
+{id: 'Carrotia', image: 'https://static.wikia.nocookie.net/sonic/images/3/39/Carrottia_IDW_transparent.png/revision/latest?cb=20230819084809'},
+{id: 'Mecha (Scrapnik)', image: 'https://static.wikia.nocookie.net/sonic/images/f/f4/Mecha_Sonic_IDW.png/revision/latest?cb=20230827161734'},
+{id: 'Storm', image: 'https://static.wikia.nocookie.net/sonic/images/e/ec/StormSFSB.png/revision/latest?cb=20201002023651'},
+{id: 'Rusty Rose', image: 'https://static.wikia.nocookie.net/sonic/images/b/ba/SFSBRustyRose.png/revision/latest?cb=20221210211657'},
+{id: 'Lyric', image: 'https://static.wikia.nocookie.net/sonic/images/7/79/Sonic_Boom_Lyric.png/revision/latest?cb=20140724233505'},
+{id: 'Steve Eggman', image: 'https://static.wikia.nocookie.net/sonic/images/d/dc/Steve_Eggman_profile.png/revision/latest?cb=20170605143411'},
+{id: 'Conquering Storm', image: 'https://static.wikia.nocookie.net/sonic/images/b/b5/Conquering_Storm_profile.png/revision/latest/scale-to-width-down/1000?cb=20230201001729'},
+{id: 'Relic', image: 'https://static.wikia.nocookie.net/sonic/images/9/90/Relic_the_Pika.jpg/revision/latest?cb=20140428205930'},
+{id: 'Kip', image: 'https://static.wikia.nocookie.net/sonic/images/a/a7/Kip.png/revision/latest?cb=20230810232910'},
+{id: 'Coral', image: 'https://static.wikia.nocookie.net/sonic/images/9/99/Coral_the_Betta.jpg/revision/latest?cb=20220930131403'},
+{id: 'Sonicman', image: 'https://static.wikia.nocookie.net/sonic/images/7/7d/STH2006_Sonicman_01.png/revision/latest/scale-to-width-down/1000?cb=20210315184855'},
+{id: 'Topaz', image: 'https://static.wikia.nocookie.net/sonic/images/a/a5/Topaz_Sonic_X_profile.png/revision/latest?cb=20230123083743'},
+{id: 'Elise', image: 'https://static.wikia.nocookie.net/sonic/images/e/ec/Elise2006-2.png/revision/latest/scale-to-width-down/1000?cb=20170805194014'},
+{id: 'Squad Comm. Red', image: 'https://static.wikia.nocookie.net/sonic/images/2/26/Squad_Commander_Red-profile.png/revision/latest?cb=20230713135152'},
+{id: 'Nine', image: 'https://static.wikia.nocookie.net/sonic/images/9/98/SSSNINERENDER.png/revision/latest?cb=20221223011803'},
+];
+
+var myPicker = new picker.Picker({
+    items: items
+});
+
+var pickerUI = new PickerUI(myPicker, {
+    elements: {
+        pick: "#pick",
+        pass: "#pass",
+        undo: "#undo",
+        redo: "#redo",
+        evaluating: "#evaluating",
+        favorites: "#favorites"
+    }
+});
+
+pickerUI.initialize();
+
+/* Sortable favorites - you can safely remove this, and the Sortable.min.js script, if you don't want to be able to sort your favorite list. */
+var sortable = new Sortable(pickerUI.elem.favorites.get(0), {
+    draggable: '.item',
+    animation: 100,
+    onStart: function() {
+        pickerUI.elem.favorites.addClass("sorting");
+    },
+    onEnd: function() {
+        pickerUI.elem.favorites.removeClass("sorting");
+    },
+    onUpdate: function() {
+        myPicker.setFavorites(pickerUI.elem.favorites.children().map(function() {
+            return pickerUI.getItem(this);
+        }).get());
+        pickerUI.update(true);
+    }
+});
+/* End sortable favorites */
+</script>
+</body>
+</html>
